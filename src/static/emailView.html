@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RXmail</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .email-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .email-card:hover { transform: translateY(-2px); }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #666; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-blue-600">RXmail</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <select
+                        id="email-filter"
+                        class="bg-white border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                    </select>
+                    <div id="admin-actions" style="display: none;">
+                        <a href="/users" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Manage Users
+                        </a>
+                    </div>
+                    <a href="/logout" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div id="email-list" class="space-y-4">
+            <!-- Email cards will be inserted here -->
+        </div>
+
+        <div class="mt-8 flex justify-between items-center">
+            <div class="flex-1 flex justify-between sm:hidden">
+                <button id="prev-page-mobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Previous
+                </button>
+                <button id="next-page-mobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Next
+                </button>
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Showing page <span id="current-page" class="font-medium">1</span> of <span id="total-pages" class="font-medium">1</span>
+                    </p>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button id="prev-page" class="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Previous
+                        </button>
+                        <button id="next-page" class="relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Next
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 mt-8">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-500">
+                © 2024 RXmail Inc. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Email template function
+        function createEmailCard(email) {
+            return `
+                <div class="email-card bg-white rounded-lg shadow-sm hover:shadow-md p-6">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2">
+                                <h2 class="text-lg font-semibold text-gray-900">${email.subject || '(No Subject)'}</h2>
+                                <span class="text-xs px-2 py-1 rounded-full ${email.html_content ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                                    ${email.html_content ? 'HTML' : 'Text'}
+                                </span>
+                            </div>
+                            <div class="mt-2 space-y-1">
+                                <p class="text-sm text-gray-600">From: <span class="font-medium">${email.from_address}</span></p>
+                                <p class="text-sm text-gray-600">To: <span class="font-medium">${email.to_address}</span></p>
+                                <p class="text-sm text-gray-500">${new Date(email.received_at).toLocaleString()}</p>
+                            </div>
+                            ${email.text_content ? `
+                                <div class="mt-3 text-sm text-gray-600 line-clamp-2">
+                                    ${email.text_content.substring(0, 200)}${email.text_content.length > 200 ? '...' : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <button onclick="openEmailContent(${email.id})"
+                                class="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            View Email
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Function to open email content in a popup
+        function openEmailContent(id) {
+            const width = Math.min(1000, window.innerWidth * 0.9);
+            const height = Math.min(800, window.innerHeight * 0.9);
+            const left = (window.innerWidth - width) / 2;
+            const top = (window.innerHeight - height) / 2;
+            
+            window.open(
+                '/view/' + id,
+                'EmailContent',
+                `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
+            );
+        }
+
+        // Initialize the page with data from the server
+        async function initializePage() {
+            const response = await fetch('/api/emails');
+            const data = await response.json();
+            
+            // Update email list
+            const emailList = document.getElementById('email-list');
+            emailList.innerHTML = data.emails.map(createEmailCard).join('');
+            
+            // Update pagination
+            document.getElementById('current-page').textContent = data.currentPage;
+            document.getElementById('total-pages').textContent = data.totalPages;
+            
+            // Update email filter dropdown
+            const filterSelect = document.getElementById('email-filter');
+            filterSelect.innerHTML = data.allowedEmails.map(email => `
+                <option value="${email === 'All Emails' ? '' : email}" ${data.selectedEmail === email ? 'selected' : ''}>
+                    ${email} ${data.emailCounts[email] ? `(${data.emailCounts[email]})` : ''}
+                </option>
+            `).join('');
+            
+            // Show admin actions if user is admin
+            if (data.isAdmin) {
+                document.getElementById('admin-actions').style.display = 'block';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('email-filter').addEventListener('change', function() {
+            window.location.href = '/?email=' + this.value;
+        });
+
+        // Initialize the page
+        initializePage();
+    </script>
+</body>
+</html>
